@@ -12,8 +12,9 @@ import OpenGL.GLU as GLU
 
 import h5py as hdf
 
-import multiprocessing
 import threading
+from numpy import array
+from scipy.ndimage import sobel
 
 fileLocation="\\\\wales.es.anl.gov\\DataArchive\\Software\\SegView\\sample_data\dataset_01.hdf5"
 points=[]
@@ -40,17 +41,26 @@ def checkKeys():
         else:
             GL.glTranslatef(direction[0], direction[1], direction[2])
     
-#
-#def calculatePoints():
-#    for 
+def calculatePoints(images):
+    for i in range(images[0], images[1]):
+        image=array(dataSet[i,:,:])
+        image=sobel(image)
+        for j, row in enumerate(image):
+#            for k, pixel in enumerate(row):
+#                if pixel==1.0:
+                    points.append((j, 0, i/70))
     
-def points():
+def drawPoints():
     GL.glBegin(GL.GL_POINTS)
-    GL.glVertex3fv()
+    for p in points:
+        GL.glVertex3fv(p)
     GL.glEnd()
 
 def main():
     global count, dataSet
+    file=hdf.File(fileLocation, 'r')
+    dataSet=file.get(list(file.items())[0][0])
+    chunkify(20)
     pygame.init()
     display = (1000,750)
     pygame.display.set_mode(display, lcl.DOUBLEBUF|lcl.OPENGL)
@@ -58,10 +68,7 @@ def main():
     GLU.gluPerspective(45, (display[0]/display[1]), 0.1, 50.0)
     
     GL.glTranslatef(0.0,0.0, -5)
-    GL.glPointSize(10)
-    file=hdf.File(fileLocation, 'r')
-    dataSet=file.get(list(file.items())[0][0])
-    chunkify(4)
+    GL.glPointSize(1)
     
     while True:
         for event in pygame.event.get():
@@ -72,7 +79,7 @@ def main():
         checkKeys()
 #        GL.glRotatef(1, 3, 1, 1)
         GL.glClear(GL.GL_COLOR_BUFFER_BIT|GL.GL_DEPTH_BUFFER_BIT)
-        points()
+        drawPoints()
         pygame.display.flip()
         pygame.time.wait(10)
 
@@ -81,9 +88,14 @@ def chunkify(numChunks):
     chunkSize=int(dataLength/numChunks)
     chunks=[]
     chunks.append((0,chunkSize-1))
-    for i in range(2, numChunks-1):
-        chunks.append((chunkSize*(i-1)), chunkSize*i)
-    chunks.append((chunkSize*(numChunks-1), dataLength))
-    print(chunks)
+    for i in range(numChunks-1):
+        chunks.append((chunkSize*(i-1), chunkSize*i))
+    chunks.append((chunkSize*(numChunks-1), dataLength-1))
+    processes=[]
+    for i in range(numChunks):
+        processes.append(threading.Thread(target=calculatePoints, args=(chunks[i],)))
+    for p in processes:
+        p.start()
+    print(processes)
 
 main()
