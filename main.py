@@ -35,53 +35,33 @@ def checkKeys():
             move.append(move_map[key])
     for direction in move:
         if direction[0]==1000:
-            GL.glRotatef(1, 0, 0, 1)
+            GL.glRotatef(5, 1, 0, 0)
         elif direction[1]==1000:
-            GL.glRotatef(1, 0, 1, 0)
+            GL.glRotatef(5, 0, 0, 1)
         else:
             GL.glTranslatef(direction[0], direction[1], direction[2])
     
 def calculatePoints(images):
-    for i in range(images[0], images[1]):
+    for i in range(images[0], images[1], 50):
         image=array(dataSet[i,:,:])
-        image=sobel(image)
-        for j, row in enumerate(image):
-#            for k, pixel in enumerate(row):
-#                if pixel==1.0:
-                    points.append((j, 0, i/70))
-    
+        for j in range(0, len(image), 10):
+            highestPoint=-1
+            lowestPoint=-1
+            for k in range(0, len(image[j]), 10):
+                if image[j][k]==1.0:
+                    highestPoint=k
+                    if lowestPoint==-1:
+                        lowestPoint=k
+            if highestPoint!=-1:
+                if lowestPoint!=highestPoint:
+                    points.append(((j-(len(image)/2))/100, (lowestPoint-(len(image)/2))/100, i/70))
+                points.append(((j-(len(image)/2))/100, (highestPoint-(len(image)/2))/100, i/70))
+
 def drawPoints():
     GL.glBegin(GL.GL_POINTS)
     for p in points:
         GL.glVertex3fv(p)
     GL.glEnd()
-
-def main():
-    global count, dataSet
-    file=hdf.File(fileLocation, 'r')
-    dataSet=file.get(list(file.items())[0][0])
-    chunkify(20)
-    pygame.init()
-    display = (1000,750)
-    pygame.display.set_mode(display, lcl.DOUBLEBUF|lcl.OPENGL)
-    
-    GLU.gluPerspective(45, (display[0]/display[1]), 0.1, 50.0)
-    
-    GL.glTranslatef(0.0,0.0, -5)
-    GL.glPointSize(1)
-    
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-#        GL.glTranslatef(0.0,0.0, -.1)
-        checkKeys()
-#        GL.glRotatef(1, 3, 1, 1)
-        GL.glClear(GL.GL_COLOR_BUFFER_BIT|GL.GL_DEPTH_BUFFER_BIT)
-        drawPoints()
-        pygame.display.flip()
-        pygame.time.wait(10)
 
 def chunkify(numChunks):
     dataLength=len(dataSet)
@@ -97,5 +77,32 @@ def chunkify(numChunks):
     for p in processes:
         p.start()
     print(processes)
+
+def main():
+    global count, dataSet
+    file=hdf.File(fileLocation, 'r')
+    dataSet=file.get(list(file.items())[0][0])
+    chunkify(40)
+    pygame.init()
+    display = (2000, 1000)
+    pygame.display.set_mode(display, lcl.DOUBLEBUF|lcl.OPENGL)
+    
+    GLU.gluPerspective(45, (display[0]/display[1]), 0.1, 50.0)
+    
+    GL.glTranslatef(0.0,0.0, -20)
+    GL.glPointSize(1)
+    
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+        checkKeys()
+        GL.glClear(GL.GL_COLOR_BUFFER_BIT|GL.GL_DEPTH_BUFFER_BIT)
+        drawPoints()
+        pygame.display.flip()
+        pygame.time.wait(10)
+
+
 
 main()
